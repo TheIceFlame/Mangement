@@ -7,22 +7,23 @@ import com.invoice.mangment.enums.Role;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Set;
 
 @Configuration
 public class DataInitializer {
 
     @Bean
-    public CommandLineRunner init(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public CommandLineRunner init(UserRepository userRepository) {
         return args -> {
             if (userRepository.count() == 0) {
                 // Create a default admin user
                 Users admin = new Users();
                 admin.setUsername("admin");
-                admin.setPassword(passwordEncoder.encode("adminPassword")); // Hash the password
+                admin.setPassword(hashPassword("adminPassword")); // Hash the password using custom logic
                 admin.setEmail("admin@example.com");
                 admin.setRoles(Set.of(Role.ADMIN));
                 admin.setPrivileges(Set.of(
@@ -42,4 +43,27 @@ public class DataInitializer {
         };
     }
 
+    // Custom password hashing function using SHA-256
+    private String hashPassword(String password) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] encodedHash = digest.digest(password.getBytes(StandardCharsets.UTF_8));
+            return bytesToHex(encodedHash);
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("Error hashing password", e);
+        }
+    }
+
+    // Helper function to convert byte array to hex string
+    private String bytesToHex(byte[] hash) {
+        StringBuilder hexString = new StringBuilder(2 * hash.length);
+        for (byte b : hash) {
+            String hex = Integer.toHexString(0xff & b);
+            if (hex.length() == 1) {
+                hexString.append('0');
+            }
+            hexString.append(hex);
+        }
+        return hexString.toString();
+    }
 }
